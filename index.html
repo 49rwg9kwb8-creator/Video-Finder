@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Video Finder Social (Embedded Players, Native App Options, Likes & Deletable Comments)</title>
+  <title>Video Finder Social (Dynamic Search & Clean NSFW Direct Links)</title>
   
   <style>
     :root {
@@ -258,7 +258,7 @@
       margin-bottom: 10px;
     }
 
-    /* EMBEDDED PLAYER CONTAINER */
+    /* EMBEDDED PLAYER & DIRECT LINK CARDS */
     .embed-player-wrapper {
       position: relative;
       width: 100%;
@@ -275,7 +275,16 @@
       border: none;
     }
 
-    /* SOCIAL ACTION ROW (Likes & Comments) */
+    .nsfw-direct-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    /* SOCIAL ACTION ROW */
     .social-action-row {
       display: flex;
       align-items: center;
@@ -349,7 +358,6 @@
       margin-right: 6px;
     }
 
-    /* EMBEDDED SEARCH RESULTS & COMMUNITY LIST CARDS */
     .results-container {
       margin-top: 16px;
     }
@@ -464,9 +472,9 @@
   <!-- APP OPEN VERIFICATION MODAL -->
   <div id="appOpenModal" class="modal">
     <div class="modal-box" style="text-align: center;">
-      <h3 style="margin-bottom: 12px;">📱 Open in Native App?</h3>
+      <h3 style="margin-bottom: 12px;">📱 Open in Native App / External Site?</h3>
       <p style="font-size: 14px; color: var(--sub); margin-bottom: 20px;" id="appOpenPromptText">Are you sure you want to leave the browser and open this link in your external video application?</p>
-      <button class="main" onclick="confirmOpenInApp()" style="background: var(--accent); margin-bottom: 12px;">Yes, Open in App</button>
+      <button class="main" onclick="confirmOpenInApp()" style="background: var(--accent); margin-bottom: 12px;">Yes, Open Link</button>
       <button class="secondary" onclick="closeAppOpenModal()">Cancel</button>
     </div>
   </div>
@@ -587,7 +595,7 @@
     </div>
 
     <h3 style="font-size:16px; margin-bottom:12px;">Community Posts Feed</h3>
-    <p style="font-size: 12px; color: var(--sub); margin-bottom: 12px;">Click any community list card to expand, watch embedded players, like, comment, delete your comments, or open in app.</p>
+    <p style="font-size: 12px; color: var(--sub); margin-bottom: 12px;">Click any community list card to expand, watch embedded players or direct links, like, comment, and share.</p>
     <div id="communityContent">Loading shared community posts...</div>
   </div>
 
@@ -644,7 +652,7 @@
     </div>
   </div>
 
-  <div class="version-badge">v4.9.2 (Dynamic Platform Search)</div>
+  <div class="version-badge">v4.9.3 (Dynamic Platform Search & NSFW Direct Links)</div>
 
   <!-- FIREBASE MODULE & LOGIC -->
   <script type="module">
@@ -886,21 +894,32 @@
         `;
         
         (post.items || []).forEach(v => {
-          const embedUrl = getEmbedUrl(v.url);
-          html += `
-            <div style="margin-top:12px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);" onclick="event.stopPropagation()">
-              <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${v.title}</div>
-              <div class="embed-player-wrapper">
-                <iframe src="${embedUrl}" allowfullscreen></iframe>
+          const isNsfwUrl = isNsfwPlatformUrl(v.url);
+          if (isNsfwUrl) {
+            html += `
+              <div class="nsfw-direct-card" onclick="event.stopPropagation()">
+                <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${v.title}</div>
+                <div style="font-size:12px; color:var(--sub); margin-bottom:12px;">🔞 Adult Platform Direct Link</div>
+                <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">🔗 Open Video Link / App</button>
               </div>
-              <div style="display:flex; justify-content:flex-end; gap:8px;">
-                <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">📱 Open in App</button>
+            `;
+          } else {
+            const embedUrl = getEmbedUrl(v.url);
+            html += `
+              <div style="margin-top:12px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);" onclick="event.stopPropagation()">
+                <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${v.title}</div>
+                <div class="embed-player-wrapper">
+                  <iframe src="${embedUrl}" allowfullscreen></iframe>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                  <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">📱 Open in App</button>
+                </div>
               </div>
-            </div>
-          `;
+            `;
+          }
         });
 
-        // Social Action Row (Likes & Comments Toggle)
+        // Social Action Row
         html += `
           <div class="social-action-row" onclick="event.stopPropagation()">
             <button class="action-btn ${isLikedByMe ? 'liked' : ''}" onclick="togglePostLike('${post.id}')">
@@ -981,7 +1000,7 @@
 
     function promptOpenInApp(url) {
       pendingAppUrl = url;
-      document.getElementById("appOpenPromptText").textContent = `Are you sure you want to leave the browser and open "${url}" in your native video app?`;
+      document.getElementById("appOpenPromptText").textContent = `Are you sure you want to open "${url}" in your external application or browser?`;
       document.getElementById("appOpenModal").style.display = "flex";
     }
 
@@ -1055,36 +1074,22 @@
       toggleMenu();
     }
 
-    function switchTab(t) {
-      document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-      
-      const tabs = document.querySelectorAll(".tab");
-      if(t === 'search') {
-        document.getElementById("searchPanel").classList.add("active");
-        tabs[0].classList.add("active");
-      }
-      if(t === 'list') {
-        document.getElementById("listPanel").classList.add("active");
-        tabs[1].classList.add("active");
-      }
-      if(t === 'community') {
-        document.getElementById("communityPanel").classList.add("active");
-        tabs[2].classList.add("active");
-      }
+    function isNsfwPlatformUrl(url) {
+      if (!url) return false;
+      const lower = url.toLowerCase();
+      return lower.includes('pornhub.com') || 
+             lower.includes('xvideos.com') || 
+             lower.includes('xnxx.com') || 
+             lower.includes('spankbang.com') ||
+             ['Pornhub', 'XVideos', 'XNXX', 'SpankBang'].includes(currentPlatform);
     }
 
-    // Helper to dynamically get embed player URLs based on active platform or url domain
     function getEmbedUrl(url, platform = currentPlatform) {
       if (!url) return "https://www.youtube.com/embed/dQw4w9WgXcQ";
 
       let domainPlatform = platform.toLowerCase();
       if (url.includes('vimeo.com')) domainPlatform = 'vimeo';
       if (url.includes('dailymotion.com')) domainPlatform = 'dailymotion';
-      if (url.includes('pornhub.com')) domainPlatform = 'pornhub';
-      if (url.includes('xvideos.com')) domainPlatform = 'xvideos';
-      if (url.includes('xnxx.com')) domainPlatform = 'xnxx';
-      if (url.includes('spankbang.com')) domainPlatform = 'spankbang';
 
       if (domainPlatform === 'vimeo') {
         let vimeoId = url.split('vimeo.com/')[1]?.split('?')[0] || "76979871";
@@ -1092,9 +1097,6 @@
       } else if (domainPlatform === 'dailymotion') {
         let dmId = url.split('video/')[1]?.split('?')[0] || "x8p03e2";
         return `https://www.dailymotion.com/embed/video/${dmId}`;
-      } else if (['pornhub', 'xvideos', 'xnxx', 'spankbang'].includes(domainPlatform)) {
-        // Safe embedded sample or external sandbox frame for adult platforms
-        return `https://www.youtube.com/embed/dQw4w9WgXcQ`;
       } else {
         // Default YouTube embed
         let videoId = "dQw4w9WgXcQ";
@@ -1112,42 +1114,62 @@
       const container = document.getElementById("searchResultsContainer");
       if(!q) return alert("Please enter search terms.");
       
-      container.innerHTML = "<p style='font-size:13px; color:var(--sub);'>Searching " + currentPlatform + " results...</p>";
+      container.innerHTML = "<p style='font-size:13px; color:var(--sub);'>Searching " + currentPlatform + " results for \"" + q + "\"...</p>";
 
       setTimeout(() => {
-        let sampleUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`;
+        let sampleUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
         if (currentPlatform === 'Vimeo') {
-          sampleUrl = `https://vimeo.com/76979871`;
+          sampleUrl = `https://vimeo.com/search?q=${encodeURIComponent(q)}`;
         } else if (currentPlatform === 'Dailymotion') {
-          sampleUrl = `https://www.dailymotion.com/video/x8p03e2`;
+          sampleUrl = `https://www.dailymotion.com/search/${encodeURIComponent(q)}`;
         } else if (['Pornhub', 'XVideos', 'XNXX', 'SpankBang'].includes(currentPlatform)) {
-          sampleUrl = `https://www.${currentPlatform.toLowerCase()}.com/view_video.php?viewkey=sample`;
+          let domainName = currentPlatform.toLowerCase() === 'xvideos' ? 'xvideos.com' : `${currentPlatform.toLowerCase()}.com`;
+          sampleUrl = `https://www.${domainName}/results?search=${encodeURIComponent(q)}`;
         }
 
         let mockResults = [
-          { title: `${q} - Official HD Feature (${currentPlatform})`, url: sampleUrl, duration: '12:45' },
-          { title: `Top Rated: ${q} Highlights & Moments`, url: sampleUrl, duration: '08:30' },
-          { title: `Full Stream: ${q} Masterclass Edition`, url: sampleUrl, duration: '24:10' }
+          { title: `${q} - Complete HD Coverage & Guide (${currentPlatform})`, url: sampleUrl, duration: '14:20' },
+          { title: `Top Stream: Ultimate ${q} Compilation`, url: sampleUrl, duration: '22:15' },
+          { title: `Exclusive Feature: ${q} Full Version`, url: sampleUrl, duration: '09:45' }
         ];
 
         let html = `<h3 style="font-size:15px; margin-bottom:10px;">Results for "${q}" on ${currentPlatform}</h3>`;
+        
         mockResults.forEach((item) => {
-          let embedUrl = getEmbedUrl(item.url, currentPlatform);
-          html += `
-            <div class="result-card">
-              <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${item.title}</div>
-              <div class="embed-player-wrapper">
-                <iframe src="${embedUrl}" allowfullscreen></iframe>
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                <span style="font-size:12px; color:var(--sub);">Duration: ${item.duration}</span>
-                <div style="display:flex; gap:6px;">
-                  <button onclick="promptOpenInApp('${item.url}')" style="background:var(--accent); border:none; color:white; padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer;">📱 Open App</button>
-                  <button onclick="addSearchResultToList('${item.title.replace(/'/g, "\\'")}', '${item.url}')" style="background:var(--green); border:none; color:white; padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer;">➕ Save</button>
+          const isNsfw = isNsfwPlatformUrl(item.url);
+          
+          if (isNsfw) {
+            html += `
+              <div class="result-card">
+                <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${item.title}</div>
+                <div class="nsfw-direct-card">
+                  <div style="font-size:12px; color:var(--sub); margin-bottom:10px;">🔞 Adult Content Direct Link (Embeds not supported)</div>
+                  <button onclick="promptOpenInApp('${item.url}')" style="background:var(--accent); border:none; color:white; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">🔗 Open Video Link / App</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  <span style="font-size:12px; color:var(--sub);">Duration: ${item.duration}</span>
+                  <button onclick="addSearchResultToList('${item.title.replace(/'/g, "\\'")}', '${item.url}')" style="background:var(--green); border:none; color:white; padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer;">➕ Save to List</button>
                 </div>
               </div>
-            </div>
-          `;
+            `;
+          } else {
+            let embedUrl = getEmbedUrl(item.url, currentPlatform);
+            html += `
+              <div class="result-card">
+                <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${item.title}</div>
+                <div class="embed-player-wrapper">
+                  <iframe src="${embedUrl}" allowfullscreen></iframe>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  <span style="font-size:12px; color:var(--sub);">Duration: ${item.duration}</span>
+                  <div style="display:flex; gap:6px;">
+                    <button onclick="promptOpenInApp('${item.url}')" style="background:var(--accent); border:none; color:white; padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer;">📱 Open App</button>
+                    <button onclick="addSearchResultToList('${item.title.replace(/'/g, "\\'")}', '${item.url}')" style="background:var(--green); border:none; color:white; padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer;">➕ Save</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
         });
         container.innerHTML = html;
       }, 400);
@@ -1259,21 +1281,37 @@
 
       let html = "";
       items.forEach((v, idx) => {
-        let embedUrl = getEmbedUrl(v.url);
-        html += `
-          <div class="video-item">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-weight:bold; font-size:15px; color:var(--text);">${v.title}</span>
-              <button onclick="removeVideoFromList(${idx})" style="background:transparent; border:none; color:var(--danger); font-size:16px; cursor:pointer;" title="Remove">✕</button>
+        const isNsfwUrl = isNsfwPlatformUrl(v.url);
+        if (isNsfwUrl) {
+          html += `
+            <div class="video-item">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-weight:bold; font-size:15px; color:var(--text);">${v.title}</span>
+                <button onclick="removeVideoFromList(${idx})" style="background:transparent; border:none; color:var(--danger); font-size:16px; cursor:pointer;" title="Remove">✕</button>
+              </div>
+              <div class="nsfw-direct-card">
+                <div style="font-size:12px; color:var(--sub); margin-bottom:10px;">🔞 Adult Platform Direct Link</div>
+                <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;">🔗 Open Video Link / App</button>
+              </div>
             </div>
-            <div class="embed-player-wrapper">
-              <iframe src="${embedUrl}" allowfullscreen></iframe>
+          `;
+        } else {
+          let embedUrl = getEmbedUrl(v.url);
+          html += `
+            <div class="video-item">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-weight:bold; font-size:15px; color:var(--text);">${v.title}</span>
+                <button onclick="removeVideoFromList(${idx})" style="background:transparent; border:none; color:var(--danger); font-size:16px; cursor:pointer;" title="Remove">✕</button>
+              </div>
+              <div class="embed-player-wrapper">
+                <iframe src="${embedUrl}" allowfullscreen></iframe>
+              </div>
+              <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">📱 Open in App</button>
+              </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-              <button onclick="promptOpenInApp('${v.url}')" style="background:var(--accent); border:none; color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;">📱 Open in App</button>
-            </div>
-          </div>
-        `;
+          `;
+        }
       });
       container.innerHTML = html;
     }
