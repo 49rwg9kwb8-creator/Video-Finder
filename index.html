@@ -644,7 +644,7 @@
     </div>
   </div>
 
-  <div class="version-badge">v4.9.1 (Fixed Module Scope)</div>
+  <div class="version-badge">v4.9.2 (Dynamic Platform Search)</div>
 
   <!-- FIREBASE MODULE & LOGIC -->
   <script type="module">
@@ -1074,10 +1074,29 @@
       }
     }
 
-    // Helper to get embed player URLs
-    function getEmbedUrl(url) {
+    // Helper to dynamically get embed player URLs based on active platform or url domain
+    function getEmbedUrl(url, platform = currentPlatform) {
       if (!url) return "https://www.youtube.com/embed/dQw4w9WgXcQ";
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+
+      let domainPlatform = platform.toLowerCase();
+      if (url.includes('vimeo.com')) domainPlatform = 'vimeo';
+      if (url.includes('dailymotion.com')) domainPlatform = 'dailymotion';
+      if (url.includes('pornhub.com')) domainPlatform = 'pornhub';
+      if (url.includes('xvideos.com')) domainPlatform = 'xvideos';
+      if (url.includes('xnxx.com')) domainPlatform = 'xnxx';
+      if (url.includes('spankbang.com')) domainPlatform = 'spankbang';
+
+      if (domainPlatform === 'vimeo') {
+        let vimeoId = url.split('vimeo.com/')[1]?.split('?')[0] || "76979871";
+        return `https://player.vimeo.com/video/${vimeoId}`;
+      } else if (domainPlatform === 'dailymotion') {
+        let dmId = url.split('video/')[1]?.split('?')[0] || "x8p03e2";
+        return `https://www.dailymotion.com/embed/video/${dmId}`;
+      } else if (['pornhub', 'xvideos', 'xnxx', 'spankbang'].includes(domainPlatform)) {
+        // Safe embedded sample or external sandbox frame for adult platforms
+        return `https://www.youtube.com/embed/dQw4w9WgXcQ`;
+      } else {
+        // Default YouTube embed
         let videoId = "dQw4w9WgXcQ";
         if (url.includes('v=')) {
           videoId = url.split('v=')[1].split('&')[0];
@@ -1085,11 +1104,7 @@
           videoId = url.split('youtu.be/')[1].split('?')[0];
         }
         return `https://www.youtube.com/embed/${videoId}`;
-      } else if (url.includes('vimeo.com')) {
-        let vimeoId = url.split('vimeo.com/')[1]?.split('?')[0] || "76979871";
-        return `https://player.vimeo.com/video/${vimeoId}`;
       }
-      return "https://www.youtube.com/embed/dQw4w9WgXcQ";
     }
 
     function executeSearch() {
@@ -1101,6 +1116,14 @@
 
       setTimeout(() => {
         let sampleUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`;
+        if (currentPlatform === 'Vimeo') {
+          sampleUrl = `https://vimeo.com/76979871`;
+        } else if (currentPlatform === 'Dailymotion') {
+          sampleUrl = `https://www.dailymotion.com/video/x8p03e2`;
+        } else if (['Pornhub', 'XVideos', 'XNXX', 'SpankBang'].includes(currentPlatform)) {
+          sampleUrl = `https://www.${currentPlatform.toLowerCase()}.com/view_video.php?viewkey=sample`;
+        }
+
         let mockResults = [
           { title: `${q} - Official HD Feature (${currentPlatform})`, url: sampleUrl, duration: '12:45' },
           { title: `Top Rated: ${q} Highlights & Moments`, url: sampleUrl, duration: '08:30' },
@@ -1109,7 +1132,7 @@
 
         let html = `<h3 style="font-size:15px; margin-bottom:10px;">Results for "${q}" on ${currentPlatform}</h3>`;
         mockResults.forEach((item) => {
-          let embedUrl = getEmbedUrl(item.url);
+          let embedUrl = getEmbedUrl(item.url, currentPlatform);
           html += `
             <div class="result-card">
               <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:var(--text);">${item.title}</div>
